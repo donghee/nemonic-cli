@@ -41,7 +41,8 @@ MIP-201 응답은 512 bytes 단위로 읽어 64-byte 초과 장치 정보의 잔
 
 구조: STX, ESC @, ESC C copies, GS v 0 mode,
 width-in-bytes LE16, height LE16, monochrome raster, ESC P, ETX.
-래스터 생성/디더링은 원본 WASM에 위임합니다. 임의 ESC/POS 텍스트 프린터로 취급하지 않습니다.
+v0.2.0은 아래 분석대로 래스터 생성/디더링을 네이티브 Rust로 재구현합니다.
+임의 ESC/POS 텍스트 프린터로 취급하지 않습니다.
 
 ## 상태 조회
 - 정보: `1d 49 02`, 30초 대기, 10/11개 ASCII 토큰 검사.
@@ -52,6 +53,50 @@ width-in-bytes LE16, height LE16, monochrome raster, ESC P, ETX.
 - SDK의 모든 복구/명령 변형은 이식하지 않았습니다. README의 한계를 참고하십시오.
 
 ## 보안/운용
-WASM memory 256 MiB 제한, 입력 RGBA 128 MiB 제한, 출력 64 MiB 제한,
-실행 fuel 제한. USB 쓰기는 실패 시 자동 재출력하지 않습니다.
+네이티브 입력 RGBA 128 MiB 제한, CLI 이미지 폭/높이 각각 16384 제한.
+너비 바이트 수는 LE16 범위를 검사하고 높이는 2000으로 자릅니다.
+WASM 비교 테스트에만 memory 256 MiB 및 fuel 제한을 적용합니다. USB 쓰기는 실패 시 자동 재출력하지 않습니다.
 이 구현은 제조사 공식 Rust SDK가 아닙니다. 실물 장치에서 검증하지 않았습니다.
+
+
+## v0.2.0 네이티브 재구현 근거
+
+개발 환경에서 `wabt`의 `readWasm` → WAT로 `build_print_command`를 분석했습니다.
+원본 WASM에는 Rust 컴파일러 심볼이 남아 있지만 원래 소스 파일을 복원한 것은 아닙니다.
+WAT/제조사 바이너리는 저장소에 포함하지 않습니다.
+
+### dither=false
+1. RGBA를 f32로 읽고, alpha가 255가 아니면 각 채널을
+   `a = alpha/255.0; channel = a*channel + (1.0-a)*255.0`으로 흰색 합성.
+2. HSL lightness `(max(R,G,B)+min(R,G,B))*0.5`가 **128 미만**이면 검정.
+3. 행 우선, MSB-first, 마지막 바이트의 남는 비트는 0(흰색).
+
+주의: 검정 alpha=127은 f32 합성 결과가 128보다 약간 작아서 검정으로 판정됩니다.
+이를 정수 합성으로 바꾸면 원본과 달라집니다.
+
+### dither=true
+1. RGB 원본의 3x3 sharpening: `(13*center - sum(8 neighbors))/5`,
+   signed division은 0 방향 절삭 후 [0,255] clamp. alpha는 center 값을 유지.
+   첫/마지막 행과 첫/마지막 열은 그대로 복사. 소스 버퍼와 출력 버퍼는 분리.
+2. 각 채널을 `(channel*alpha + (255-alpha)*255)/255` 정수 연산으로 흰색 합성.
+3. f32 회색조: `B*0.114 + (G*0.587 + R*0.299)` 순서로 계산 후 i32 절삭.
+4. 왼쪽→오른쪽, 위→아래 Sierra 3행 오차 확산:
+
+```text
+          X 5 3
+      2 4 5 4 2
+        2 3 2         / 32
+```
+
+현재값 <=127은 검정, 그 외 흰색. 확산 error는 검정이면 max(value,0),
+흰색이면 min(value,255)-255. 각 이웃에는 `(error*weight+16)/32`를 더함.
+음수에도 +16을 사용하며 signed division은 0 방향 절삭합니다.
+이웃 좌표는 행/열 경계에서 건너뜁니다. 회색조 버퍼는 중간에 clamp하지 않습니다.
+
+### 검증과 호환 범위
+- 기존 JS glue 기준 8개 golden fixture 일치.
+- 원본 WASM과 네이티브 Rust 직접 비교: 1312개 입력 조합.
+- 크기 1px/2px, 알파, 경계 회색, 색상, 랜덤, 매수, 디더링, 높이 자르기 포함.
+- 전체 가능한 이미지 입력의 동치 증명은 아님. USB 실기 검증은 별도 필요.
+- 네이티브 함수는 Result 오류와 메모리 한도를 사용하므로 원본 WASM ABI/에러 코드까지
+  재현하지 않으며, 지원 범위 내 정상 입력의 출력 바이트 호환을 목표로 합니다.

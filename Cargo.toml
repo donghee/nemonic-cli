@@ -1,6 +1,6 @@
 [package]
 name = "nemonic-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Experimental Linux USB CLI for Nemonic printers, based on Web SDK 0.9.1"
 
@@ -10,6 +10,11 @@ clap = { version = "4", features = ["derive", "env"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 rusb = "0.9"
 serde_json = "1"
+
+[features]
+wasm-oracle = []
+
+[dev-dependencies]
 wasmi = "0.40"
 
 [profile.release]

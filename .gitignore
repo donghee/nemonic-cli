@@ -1,3 +1,4 @@
 /target/
 /assets/*.wasm
 *.log
+/*-results.txt
