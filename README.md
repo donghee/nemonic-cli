@@ -28,6 +28,8 @@ SDK 분석·재구현 및 배포 허용 범위는 제조사 조건을 별도로 
 ```sh
 ./target/release/nemonic-cli list
 ./target/release/nemonic-cli render image.png -o job.bin --dither --copies 2
+# 원본 크기 유지
+./target/release/nemonic-cli render image.png -o original.bin --no-resize
 ./target/release/nemonic-cli --bus 1 --address 5 info
 ./target/release/nemonic-cli --bus 1 --address 5 status
 ./target/release/nemonic-cli --bus 1 --address 5 print image.png --dither
@@ -37,8 +39,15 @@ SDK 분석·재구현 및 배포 허용 범위는 제조사 조건을 별도로 
 - 장치가 여러 개면 명시적으로 선택해야 합니다. bus/address는 재연결 시 바뀔 수 있습니다.
 - `render`는 USB에 접근하지 않습니다. 출력 파일이 이미 있으면 덮어쓰지 않습니다.
 - `print`는 즉시 용지 급지/커팅이 발생할 수 있습니다. 먼저 `render`로 확인하십시오.
-- PNG/JPEG만 지원합니다. PDF/텍스트 렌더링, 자동 리사이즈는 구현하지 않았습니다.
-- 픽셀 크기를 그대로 SDK에 전달합니다. SDK는 유효 높이를 최대 2000px로 제한합니다.
+- PNG/JPEG만 지원합니다. PDF/텍스트 렌더링은 구현하지 않았습니다.
+- `render`와 `print`는 기본적으로 이미지를 가로 **576px**로 확대/축소하고 세로 비율을 유지합니다.
+  높이는 공식 샘플의 canvas 정수 변환처럼 소수점 이하를 버리며 최소 1px입니다.
+  `--no-resize`를 지정하면 원본 픽셀 크기를 유지합니다.
+- 보간은 Triangle 필터이며 브라우저 Canvas와 픽셀 단위 동일성을 보장하지 않습니다.
+  투명 이미지의 보간은 premultiplied alpha로 처리하고 다시 RGBA로 변환합니다.
+- 변환 후 높이가 2000px를 초과하면 경고하며, 렌더러는 위쪽 2000px까지만 출력합니다.
+  자동 분할이나 용지별 높이 맞춤은 하지 않습니다. 변환 결과 RGBA는 최대 128 MiB입니다.
+- 이 자동 맞춤은 모델과 무관하게 적용됩니다. 576px는 공식 샘플 기준이며 물리 인쇄 폭 보장은 아닙니다.
 - 알파 채널은 원본 ImageData처럼 그대로 전달합니다. 투명 배경 처리가 의도와 다른 경우
   미리 흰색 배경으로 합성한 이미지를 사용하십시오.
   네이티브 구현 내부에서도 SDK와 동일하게 흰색에 합성하지만 모드별 반올림 방식이 다릅니다.

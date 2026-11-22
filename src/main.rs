@@ -1,3 +1,4 @@
+mod prepare;
 mod render;
 mod usb;
 #[cfg(all(test, feature = "wasm-oracle"))]
@@ -57,12 +58,15 @@ enum Command {
 }
 #[derive(Args)]
 struct ImageOptions {
-    /// PNG/JPEG path. No implicit scaling: prepare at desired pixel dimensions.
+    /// PNG/JPEG path. Fits to 576px width by default, preserving aspect ratio.
     input: PathBuf,
     #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u8).range(1..=255))]
     copies: u8,
     #[arg(long)]
     dither: bool,
+    /// Keep original pixel dimensions instead of fitting to 576px width.
+    #[arg(long)]
+    no_resize: bool,
 }
 fn generate(opt: &ImageOptions) -> Result<Vec<u8>> {
     let mut reader = ImageReader::open(&opt.input)?.with_guessed_format()?;
@@ -76,6 +80,7 @@ fn generate(opt: &ImageOptions) -> Result<Vec<u8>> {
         u64::from(rgba.width()) * u64::from(rgba.height()) * 4 <= 128 * 1024 * 1024,
         "image too large"
     );
+    let rgba = prepare::fit_width(rgba, opt.no_resize)?;
     if rgba.height() > 2000 {
         eprintln!(
             "warning: SDK limits effective height to 2000 pixels; input is {}",
