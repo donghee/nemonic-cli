@@ -1,0 +1,4 @@
+# Add the current user to the plugdev group; reconnect USB afterwards.
+SUBSYSTEM=="usb", ATTR{idVendor}=="36ec", ATTR{idProduct}=="1001", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="36ec", ATTR{idProduct}=="1002", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1c8a", ATTR{idProduct}=="3a21", MODE="0660", GROUP="plugdev", TAG+="uaccess"

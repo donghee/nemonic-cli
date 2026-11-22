@@ -1,0 +1,66 @@
+[
+  {
+    "name": "white",
+    "width": 8,
+    "height": 1,
+    "copies": 1,
+    "dither": false,
+    "bytes": 18
+  },
+  {
+    "name": "black",
+    "width": 8,
+    "height": 2,
+    "copies": 1,
+    "dither": false,
+    "bytes": 19
+  },
+  {
+    "name": "odd",
+    "width": 13,
+    "height": 7,
+    "copies": 3,
+    "dither": false,
+    "bytes": 31
+  },
+  {
+    "name": "gradient",
+    "width": 64,
+    "height": 32,
+    "copies": 2,
+    "dither": false,
+    "bytes": 273
+  },
+  {
+    "name": "dither",
+    "width": 64,
+    "height": 32,
+    "copies": 2,
+    "dither": true,
+    "bytes": 273
+  },
+  {
+    "name": "alpha",
+    "width": 17,
+    "height": 11,
+    "copies": 255,
+    "dither": true,
+    "bytes": 50
+  },
+  {
+    "name": "tall",
+    "width": 8,
+    "height": 2001,
+    "copies": 1,
+    "dither": false,
+    "bytes": 2017
+  },
+  {
+    "name": "normal",
+    "width": 576,
+    "height": 96,
+    "copies": 1,
+    "dither": true,
+    "bytes": 6929
+  }
+]
